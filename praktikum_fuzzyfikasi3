@@ -1,0 +1,156 @@
+import mysql.connector
+import matplotlib.pyplot as plt
+import numpy as np
+
+db = mysql.connector.connect(
+    host="localhost",
+    user="root",
+    password="",  # Sesuaikan dengan password MySQL Anda
+    database="fuzzy_modul1"
+)
+
+
+# --- BAYI ---
+def trapesium_up_bayi(x):
+    return (x - 0) / (2 - 0)
+
+def trapesium_down_bayi(x):
+    return (5 - x) / (5 - 3)
+
+# --- ANAK ---
+def trapesium_up_anak(x):
+    return (x - 5) / (8 - 5)
+
+def trapesium_down_anak(x):
+    return (11 - x) / (11 - 9)
+
+# --- REMAJA ---
+def trapesium_up_remaja(x):
+    return (x - 10) / (14 - 10)
+
+def trapesium_down_remaja(x):
+    return (19 - x) / (19 - 15)
+
+# --- PEMUDA ---
+def trapesium_up_pemuda(x):
+    return (x - 15) / (19 - 15)
+
+def trapesium_down_pemuda(x):
+    return (24 - x) / (24 - 20)
+
+# --- DEWASA ---
+def trapesium_up_dewasa(x):
+    return (x - 20) / (42 - 20)
+
+def trapesium_down_dewasa(x):
+    return (65 - x) / (65 - 43)
+
+# --- LANSIA ---
+def trapesium_up_lansia(x):
+    return (x - 60) / (69.5 - 60)
+
+def trapesium_down_lansia(x):
+    return (80 - x) / (80 - 70.5)
+
+fungsi_dict = {
+    "trapesium_up_bayi": trapesium_up_bayi,
+    "trapesium_down_bayi": trapesium_down_bayi,
+    "trapesium_up_anak": trapesium_up_anak,
+    "trapesium_down_anak": trapesium_down_anak,
+    "trapesium_up_remaja": trapesium_up_remaja,
+    "trapesium_down_remaja": trapesium_down_remaja,
+    "trapesium_up_pemuda": trapesium_up_pemuda,
+    "trapesium_down_pemuda": trapesium_down_pemuda,
+    "trapesium_up_dewasa": trapesium_up_dewasa,
+    "trapesium_down_dewasa": trapesium_down_dewasa,
+    "trapesium_up_lansia": trapesium_up_lansia,
+    "trapesium_down_lansia": trapesium_down_lansia,
+}
+
+# Daftar kategori dan tabelnya
+kategori_tabel = [
+    ("Bayi", "tb_domain_usia_bayi"),
+    ("Anak-anak", "tb_domain_usia_anak"),
+    ("Remaja", "tb_domain_usia_remaja"),
+    ("Pemuda", "tb_domain_usia_pemuda"),
+    ("Dewasa", "tb_domain_usia_dewasa"),
+    ("Lansia", "tb_domain_usia_lansia"),
+]
+
+def hitung_fuzzy_kategori(x, nama_tabel):
+    cursor = db.cursor()
+    query = f"""
+        SELECT b_bawah, b_atas, fungsi
+        FROM {nama_tabel}
+        WHERE %s >= b_bawah AND %s <= b_atas
+    """
+    cursor.execute(query, (x, x))
+    data = cursor.fetchone()
+    
+    # Mengosongkan sisa buffer cursor agar tidak error "Unread result found"
+    while cursor.nextset():
+        pass
+    cursor.close()
+
+    if data is None:
+        return 0.0, "0", "Di luar range"
+
+    b_bawah, b_atas, nama_fungsi = data
+    interval_str = f"{b_bawah} - {b_atas}"
+
+    if nama_fungsi == "0":
+        return 0.0, "0", interval_str
+    elif nama_fungsi == "1":
+        return 1.0, "1", interval_str
+    elif nama_fungsi in fungsi_dict:
+        nilai = fungsi_dict[nama_fungsi](x)
+        return round(nilai, 4), nama_fungsi, interval_str
+    else:
+        raise ValueError(f"Fungsi '{nama_fungsi}' belum didefinisikan.")
+
+def tampilkan_grafik(usia_input):
+    x_vals = np.linspace(0, 150, 1000)
+
+    # Mengambil nilai derajat keanggotaan untuk kurva
+    y_bayi = [hitung_fuzzy_kategori(val, "tb_domain_usia_bayi")[0] for val in x_vals]
+    y_anak = [hitung_fuzzy_kategori(val, "tb_domain_usia_anak")[0] for val in x_vals]
+    y_remaja = [hitung_fuzzy_kategori(val, "tb_domain_usia_remaja")[0] for val in x_vals]
+    y_pemuda = [hitung_fuzzy_kategori(val, "tb_domain_usia_pemuda")[0] for val in x_vals]
+    y_dewasa = [hitung_fuzzy_kategori(val, "tb_domain_usia_dewasa")[0] for val in x_vals]
+    y_lansia = [hitung_fuzzy_kategori(val, "tb_domain_usia_lansia")[0] for val in x_vals]
+
+    plt.figure(figsize=(12, 6))
+    plt.plot(x_vals, y_bayi, label="Bayi/Balita", color="blue")
+    plt.plot(x_vals, y_anak, label="Anak-anak", color="orange")
+    plt.plot(x_vals, y_remaja, label="Remaja", color="green")
+    plt.plot(x_vals, y_pemuda, label="Pemuda", color="red")
+    plt.plot(x_vals, y_dewasa, label="Dewasa", color="purple")
+    plt.plot(x_vals, y_lansia, label="Lansia", color="sienna")
+
+    # Garis vertikal penanda input usia
+    plt.axvline(x=usia_input, color="black", linestyle="--", label=f"Input Usia ({usia_input})")
+
+    plt.title("Grafik Fungsi Keanggotaan Trapesium Variabel Usia")
+    plt.xlabel("Usia (Tahun)")
+    plt.ylabel("Derajat Keanggotaan (mu)")
+    plt.ylim(-0.05, 1.05)
+    plt.xlim(0, 150)
+    plt.grid(True, linestyle="--", alpha=0.6)
+    plt.legend(loc="upper right")
+    plt.tight_layout()
+    plt.show()
+
+if __name__ == "__main__":
+    usia_input = float(input("Masukkan usia: "))
+    print(f"\n==========================================")
+    print(f"HASIL FUZZIFIKASI UNTUK USIA: {usia_input}")
+    print(f"==========================================")
+    
+    for label, nama_tabel in kategori_tabel:
+        mu, fungsi_digunakan, interval = hitung_fuzzy_kategori(usia_input, nama_tabel)
+        print(f"[{label:10}] Interval: {interval:15} | Fungsi: {fungsi_digunakan:22} | μ(x) = {mu}")
+    
+    # Menampilkan Grafik
+    tampilkan_grafik(usia_input)
+
+    db.close()
