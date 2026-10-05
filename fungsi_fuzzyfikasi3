@@ -1,0 +1,37 @@
+def fuzzifikasi_usia(x):
+    cursor = db.cursor()
+
+    query = """
+        SELECT DISTINCT kondisi_x, rumus_perhitungan
+        FROM domain_remaja
+    """
+
+    cursor.execute(query)
+    aturan_database = cursor.fetchall()
+    cursor.close()
+
+    if x < 10 or x > 19:
+        kondisi = "x < 10 atau x > 19"
+        penemuan = "0 – 10 → 0" if x < 10 else "x > 19 → 0"
+    elif x <= 13:
+        kondisi = "10 <= x <= 13"
+        penemuan = "10 – 13 → μ(x) = (x - 10) / 3"
+    elif x <= 16:
+        kondisi = "13 < x <= 16"
+        penemuan = "13 – 16 → μ(x) = 1"
+    else:
+        kondisi = "16 < x <= 19"
+        penemuan = "16 – 19 → μ(x) = (19 - x) / 3"
+
+    aturan = dict(aturan_database)
+    nama_fungsi = aturan.get(kondisi)
+
+    if nama_fungsi is None:
+        raise ValueError(f"Aturan '{kondisi}' tidak ditemukan di tabel
+domain_remaja.")
+
+   if nama_fungsi in fungsi:
+       fungsi_y = fungsi[nama_fungsi]
+       return fungsi_y(x), penemuan
+
+   raise ValueError(f"Rumus '{nama_fungsi}' belum didukung di           Python.")
